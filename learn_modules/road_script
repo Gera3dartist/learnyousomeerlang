@@ -1,0 +1,68 @@
+#!/usr/bin/env escript
+%% -*- erlang -*-
+%%! -smp enable -sname test
+
+%found here: http://erlang.org/pipermail/erlang-questions/2017-August/093012.html
+-mode(compile).
+
+parse_map(Bin) when is_binary(Bin) ->
+	parse_map(binary_to_list(Bin));
+parse_map(Str) when is_list(Str) ->
+	Vals = [list_to_integer(X) || X <- string:tokens(Str, "\n\r\t ")],
+	group_vals(Vals, []).
+
+
+group_vals([], Acc) -> 
+	lists:reverse(Acc);
+group_vals([A,B,C|Rest], Acc) -> 
+	group_vals(Rest, [{A,B,C}|Acc]).
+
+
+shortest_step({A,B,X}, {{DistA,PathA}, {DistB,PathB}}) ->
+
+	RouteA1 = {A + DistA, [{a, A}|PathA]},
+	RouteA2 = {B + X + DistB, [{x, X}, {b, B}|PathB]},
+
+	RouteB1 = {B + DistB, [{b, B}| PathB]},
+	RouteB2 = {A + X + DistA, [{x, X}, {a, A}|PathA]},
+	{erlang:min(RouteA1, RouteA2), erlang:min(RouteB1, RouteB2)}.
+
+optimal_path(Map) -> 
+	%% { {<int>, [{x, X1}, {a, A1}]}, {<int>, [{x, X1}, {a, A1}]}
+
+	% finds to options for A,B
+	{A,B} = lists:foldl(fun shortest_step/2, {{0, []}, {0, []}}, Map),
+	{_Dist, Path} = if 
+		hd(element(2, A)) =/= {x,0} -> A;
+		hd(element(2, B)) =/= {x,0} -> B
+	end,
+	lists:reverse(Path).
+
+
+main([FileName]) ->
+	{ok, Bin} = file:read_file(FileName),
+	Map = parse_map(Bin),
+	io:format("~p~n", [optimal_path(Map)]),
+	erlang:halt(0).
+
+
+% todo: ADD tests
+optimal_path_test() ->
+	% 5 = rpn("2 3 +"),
+	% 87 = rpn("90 3 -"),
+	% -4 = rpn("10 4 3 + 2 * -"),
+	% -2.0 = rpn("10 4 3 + 2 * - 2 /"),
+	% ok = try
+	% 	rpn("90 34 12 33 55 66 + * - +")
+	% catch
+	% 	error:{badmatch,[_|_]} -> ok
+	% end,
+	% 4037 = rpn("90 34 12 33 55 66 + * - + -"),
+	% 8.0 = rpn("2 3 ^"),
+	% true = math:sqrt(2) == rpn("2 0.5 ^"),
+	% true = math:log(2.7) == rpn("2.7 ln"),
+	% true = math:log10(2.7) == rpn("2.7 log10"),
+	% 50 = rpn("10 10 10 20 sum"),
+	% 10.0 = rpn("10 10 10 20 sum 5 /"),
+	% 1000.0 = rpn("10 10 20 0.5 prod"),
+	ok.
