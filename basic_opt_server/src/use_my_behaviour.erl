@@ -1,0 +1,2 @@
+-module(use_my_behaviour).
+-behaviour(my_behaviour).

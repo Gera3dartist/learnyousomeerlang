@@ -1,5 +1,5 @@
 -module(my_server).
--export([call/2]).
+-export(export_all).
 
 
 call(Pid, Msg) ->

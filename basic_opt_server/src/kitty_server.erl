@@ -12,17 +12,8 @@ start_link() -> spawn_link(fun init/0).
 %% because we start `receive` and blocking 
 %% till response
 order_cat(Pid, Name, Color, Description) ->
-	Ref = erlang:monitor(process, Pid),
-	Pid ! {self(), Ref, {order, Name, Color, Description}},
-	receive
-		{Ref, Cat} -> 
-			erlang:demonitor(Ref, [flush]),
-			Cat;
-		{'DOWN', Ref, process, Pid, Reason} -> 
-			erlang:error(Reason)
-	after 5000 -> 
-		erlang:error(timeout)
-	end.
+	my_server:call(Pid, {order, Name, Color, Description}).
+
 
 return_cat(Pid, Cat = #cat{}) -> 
 	Pid ! {return, Cat},
@@ -30,18 +21,7 @@ return_cat(Pid, Cat = #cat{}) ->
 
 %% Synchronouous call
 close_shop(Pid) ->
-	Ref = erlang:monitor(process, Pid),
-	Pid ! {self(), Ref, terminate},
-	io:format("sent to pid ~p~n", [Pid]),
-	receive
-		{Ref, ok} -> 
-			erlang:demonitor(Ref, [flush]),
-			ok;
-		{'DOWN', Ref, process, Reason} -> 
-			erlang:error(Reason)
-	after 5000 ->
-		erlang:error(timeout)
-	end.
+	my_server:call(Pid, terminate).
 
 
 init() -> loop([]).
@@ -61,6 +41,7 @@ loop(Cats) ->
 		{return, Cat=#cat{}} -> 
 			loop([Cat|Cats]);
 		{Pid, Ref, terminate} ->
+			io:format("terminating..."),
 			Pid ! {Ref, ok},
 			terminate(Cats);
 		Unknown ->
